@@ -77,14 +77,6 @@ int toss(int low, int high) {
     dist d(low,high);
     return (d((gen)));
 }
-/**
- * Returns the display symbol for an associated state
- * @param q state
- * @return char
- */
-char Simulator::translate(int q) {
-    return _langv->at(q);
-}
 
 void Simulator::run(Node* n) {
     if (_mode == 1) forest_fire(n);
@@ -95,6 +87,10 @@ vector<tuple<double,string>>* Simulator::get_ctrlv() {
     return _ctrlv;
 }
 
+
+char Simulator::translate(int i) {
+    return _langv->at(i);
+}
 
 int get_density(Node* n) {
     int d = 0;
@@ -108,21 +104,22 @@ void forest_fire(Node* n) {
     double g = get<0>(s->get_ctrlv()->at(1));
 
     bool ignited = false;
+    //if (n->status() == 0) { n->set(0,0); }
     if (n->status() == 1) {
         for (int x : *n->n()) {
             if (x == 2) {
-                n->set(2);
+                n->set(2, 1);
                 ignited = true;
             }
         }
     }
     if (!ignited) {
-        if (n->status() == 2) { n->set(0); }
+        if (n->status() == 2) { n->set(0, 3); }
         else if (n->status() == 1) {
-            if (toss(i)) { n->set(2);}
+            if (toss(i)) { n->set(2, 1);}
         }
         else if (n->status() == 0) {
-            if (toss(g*(get_density(n)+1))) { n->set(1);}
+            if (toss(g*(get_density(n)+1))) { n->set(1, 2);}
         }
     }
 }
@@ -172,3 +169,21 @@ ostream& operator << (ostream& o, const Simulator& s) {
     return o;
 }
 
+string& operator += (string& s, const Simulator& n) {
+    string config = "";
+    config += n._name + " | ";
+    for (var v : *n._ctrlv) {
+        config += get<1>(v);
+        config += ": ";
+        config += to_string(get<0>(v));
+        config += " | ";
+    }
+    config += "States: ";
+    for (int i = 0; i < n._langv->size(); i++) {
+        config += to_string(i);
+        config += ":[";
+        config += n._langv->at(i);
+        config += "] ";
+    }
+    return s += config;
+}

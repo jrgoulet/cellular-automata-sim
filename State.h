@@ -19,10 +19,6 @@ class State {
     int _current;        /* current generation */
     double _ignition;    /* ignition probability */
     double _growth;      /* growth probability */
-    double _burn_osc;    /* oscillating burn constant */
-    double _grow_osc;    /* oscillating grow constant */
-    int _wind_dir;
-
 
     int _start;          /* start row index */
     int _end;            /* end row index */
@@ -40,12 +36,12 @@ public:
     State(int argc, char **argv);
     void check(int argc, char** argv);
     int status(int row, int n);
+    int color(int r, int n);
     Row* get_row(int i);
     void get_map();
     void generate_map();
     void build_nodes();
     void set_bounds();
-    void display_config();
     void transmit_nodes();
     void update_neighbors();
     void apply_simulation();
@@ -55,5 +51,6 @@ public:
     int get_n();
     void inc_n();
     friend std::ostream& operator<<(std::ostream&, const State&);
+    friend std::string& operator += (std::string&, const State&);
 };
 #endif //FOREST_STATE_H

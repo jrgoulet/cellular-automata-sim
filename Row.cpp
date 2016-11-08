@@ -8,10 +8,20 @@ Node* Row::get_node(int i) {
 }
 
 Row::Row(int* i, int size) {
-    _nodev = new vector<Node*>();
+    _nodev = new vector<Node *>();
     _intv = new vector<int>();
     for (int j = 0; j < size; j++) {
         _nodev->push_back(new Node(i[j]));
+        _intv->push_back(i[j]);
+    }
+}
+
+Row::Row(int size, int* i, int z) {
+    _nodev = new vector<Node *>();
+    _intv = new vector<int>();
+    for (int j = 0; j < size; j++) {
+        //cout << "Node: " << i[j] << i[j+size] << endl;
+        _nodev->push_back(new Node(i[j],i[j+size], 0));
         _intv->push_back(i[j]);
     }
 }
@@ -52,4 +62,8 @@ void Row::sync() {
 
 vector<int>* Row::get_intv() {
     return _intv;
+}
+
+vector<Node*>* Row::get_nodev() {
+    return _nodev;
 }

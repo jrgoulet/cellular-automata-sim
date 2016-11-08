@@ -13,8 +13,8 @@ int main(int argc, char** argv) {
 
     /* mode */
     Simulator* sim =Simulator::instance();
-    //sim->set_default();
-    sim->set_conway();
+    sim->set_default();
+    //sim->set_conway();
 
     /* run simulation */ /* State.cpp contains detailed flow */
     for (int i = 0; i < s->get_n(); i++) {

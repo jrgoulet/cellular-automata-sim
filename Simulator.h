@@ -31,10 +31,11 @@ public:
     void set_default();
     //void set_mode(int mode);
     ctrlv* get_ctrlv();
-    char translate(int q);
     void display();
+    char translate(int i);
     void set_conway();
     friend std::ostream& operator<<(std::ostream&, const Simulator&);
+    friend std::string& operator += (std::string&, const Simulator&);
 };
 
 

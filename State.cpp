@@ -174,29 +174,29 @@ void State::update_neighbors() {
         Row* r = _trees->at(i);
         for (int j = 0; j < _width; j++) {
             Node* n = r->get_node(j);
-            if (_top == -1 && i == 0) { for (int x : {0,1,2}) n->set(x,3); }
+            if (_top == -1 && i == 0) { for (int x : {0,1,2}) n->setn(x, 3); }
             else if (i == 0) {
-                n->set(0, (j==0) ? 3 : _outer_top->get(j-1));
-                n->set(1, _outer_top->get(j));
-                n->set(2, (j==_width-1) ? 3 : _outer_top->get(j+1));
+                n->setn(0, (j == 0) ? 3 : _outer_top->get(j - 1));
+                n->setn(1, _outer_top->get(j));
+                n->setn(2, (j == _width - 1) ? 3 : _outer_top->get(j + 1));
             } else {
-                n->set(0, (j==0) ? 3 : status(i - 1, j - 1));
-                n->set(1, status(i - 1, j));
-                n->set(2, (j==_width-1) ? 3 : status(i - 1, j + 1));
+                n->setn(0, (j == 0) ? 3 : status(i - 1, j - 1));
+                n->setn(1, status(i - 1, j));
+                n->setn(2, (j == _width - 1) ? 3 : status(i - 1, j + 1));
             }
+
+            n->setn(3, (j == 0) ? 3 : r->get(j - 1));
+            n->setn(4, (j == _width - 1) ? 3 : r->get(j + 1));
             
-            n->set(3, (j==0) ? 3 : r->get(j-1));
-            n->set(4, (j==_width-1) ? 3 : r->get(j+1));
-            
-            if (_bot == -1 && i ==_trees->size()-1) { for (int x : {5,6,7}) n->set(x,3); }
+            if (_bot == -1 && i ==_trees->size()-1) { for (int x : {5,6,7}) n->setn(x, 3); }
             else if (i ==_trees->size()-1) {
-                n->set(5, (j==0) ? 3 : _outer_bot->get(j-1));
-                n->set(6, _outer_bot->get(j));
-                n->set(7, (j==_width-1) ? 3 : _outer_bot->get(j+1));
+                n->setn(5, (j == 0) ? 3 : _outer_bot->get(j - 1));
+                n->setn(6, _outer_bot->get(j));
+                n->setn(7, (j == _width - 1) ? 3 : _outer_bot->get(j + 1));
             } else {
-                n->set(5, (j==0) ? 3 : status(i + 1, j - 1));
-                n->set(6, status(i + 1, j));
-                n->set(7, (j==_width-1) ? 3 : status(i + 1, j + 1));
+                n->setn(5, (j == 0) ? 3 : status(i + 1, j - 1));
+                n->setn(6, status(i + 1, j));
+                n->setn(7, (j == _width - 1) ? 3 : status(i + 1, j + 1));
             }
         }
         r->sync();
@@ -213,24 +213,21 @@ void State::apply_simulation() {
     for (Row* r : *_trees) { for (int j = 0; j < _width; j++) { Simulator::instance()->run(r->get_node(j)); }}
 }
 
-/**
- * Header of simulation screen
- */
-void State::display_config() {
-    cout << "\033[2J\033[1;1H"; /* Clears screen */
-    cout << "G: " << _current << "\t";
-    Simulator::instance()->display();
-}
+
 /**
  * Body of simulation screen
  * @param thread origin rank of thread containing nodes to be printed (for display)
  * @param row overall row number (for display)
  * @param intv pointer to a vector containing node values
  */
-void display_row (int thread, int row, vector<int>* intv) {
-    cout << ((row > 9) ? to_string(row) : ("0" + to_string(row))) << ": |";
-    for (int q : *intv) cout << Simulator::instance()->translate(q);
-    cout << "| T" << ((thread > 9) ? to_string(thread) : ("0" + to_string(thread))) << endl;
+string display_row (int thread, int row, vector<Node*>* nodev) {
+    string r = "";
+    r += ((row > 9) ? to_string(row) : ("0" + to_string(row))) + ": |";
+    r += BG_BLACK;
+    for (Node* n : *nodev) r += *n;
+    r += BG_DEFAULT;
+    r += "| T" + ((thread > 9) ? to_string(thread) : ("0" + to_string(thread)));
+    return r;
 }
 
 /**
@@ -244,30 +241,37 @@ void State::display_map(int delay) {
 
     if (_rank != 0) {   /* slave : send map */
         for (int i = 0; i < _trees->size(); i++) {
-            int send[_width];
+            int send[_width*2];
             for (int j = 0; j < _width; j++) send[j] = status(i, j);
-            MPI_Send(&send,_width,MPI_INT,0,0,MPI_COMM_WORLD);
+            for (int j = _width; j < _width*2; j++) send[j] = color(i, j-_width);
+            MPI_Send(&send,_width*2,MPI_INT,0,0,MPI_COMM_WORLD);
         }
     } else {    /* master : receive and display */
         int row = 1;
-        display_config();
+        cout << "\033[2J\033[1;1H";
+        string screen = "";
+        screen += *this;
+        cout << screen << endl;
         for (int j = 0; j < _trees->size(); j++) {
-            display_row(0,row, get_row(j)->get_intv());
+            cout << display_row(0,row, get_row(j)->get_nodev()) << endl;
             row++;
         }
         for (int j = 1; j < _height - _trees->size(); j++) {
             tuple<int,int> bounds = get_bounds(_size,j,_height);
             int k = get<1>(bounds) - get<0>(bounds);
             for (int l = 0; l < k; l++) {
-                int tree[_width];
+                int recv[_width*2];
                 MPI_Status status;
-                MPI_Recv(&tree,_width,MPI_INT,j,0,MPI_COMM_WORLD,&status);
-                Row* r = new Row(tree,_width);
-                display_row(j,row,r->get_intv());
+                MPI_Recv(&recv,_width*2,MPI_INT,j,0,MPI_COMM_WORLD,&status);
+                Row* r = new Row(_width,recv, 0);
+                cout << display_row(j,row,r->get_nodev()) << endl;
                 row++;
             }
         }
     }
+
+
+
     /* for visibility */
     timespec t0, t1;
     t0.tv_sec = 0;
@@ -296,6 +300,10 @@ Row* State::get_row(int i) {
 int State::status(int r, int n) {
     return _trees->at(r)->get(n);
 }
+
+int State::color(int r, int n) {
+    return _trees->at(r)->get_node(n)->color();
+}
 /**
  * Increments the current generation (used in main)
  */
@@ -315,6 +323,15 @@ ostream& operator << (ostream& o, const State& s) {
     }
     return o;
 }
+
+string& operator += (string& s, const State& n) {
+    string config = "G: ";
+    config += to_string(n._current);
+    config += "\t";
+    config += *Simulator::instance();
+    return s += config;
+}
+
 /**
  * Exit with error message
  * @param e
