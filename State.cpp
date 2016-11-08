@@ -2,6 +2,7 @@
 #include <vector>
 #include <fstream>
 #include <random>
+#include <cstdlib>
 #include "State.h"
 #include "Simulator.h"
 #include "defs.h"
@@ -238,17 +239,19 @@ string display_row (int thread, int row, vector<Node*>* nodev) {
  */
 void State::display_map(int delay) {
     MPI_Barrier(MPI_COMM_WORLD);
-
+    MPI_Status status;
     if (_rank != 0) {   /* slave : send map */
-        for (int i = 0; i < _trees->size(); i++) {
-            int send[_width*2];
-            for (int j = 0; j < _width; j++) send[j] = status(i, j);
-            for (int j = _width; j < _width*2; j++) send[j] = color(i, j-_width);
-            MPI_Send(&send,_width*2,MPI_INT,0,0,MPI_COMM_WORLD);
+        int row = 1;
+        MPI_Recv(&row,1,MPI_INT,0,0,MPI_COMM_WORLD,&status);
+        for (int j = 0; j < _trees->size(); j++) {
+            cout << display_row(_rank,row, get_row(j)->get_nodev()) << endl;
+            row++;
         }
+        MPI_Send(&row,1,MPI_INT,0,0,MPI_COMM_WORLD);
     } else {    /* master : receive and display */
         int row = 1;
-        cout << "\033[2J\033[1;1H";
+        cout << "\x1B[2J\x1B[H";
+        //system("clear");
         string screen = "";
         screen += *this;
         cout << screen << endl;
@@ -256,22 +259,11 @@ void State::display_map(int delay) {
             cout << display_row(0,row, get_row(j)->get_nodev()) << endl;
             row++;
         }
-        for (int j = 1; j < _height - _trees->size(); j++) {
-            tuple<int,int> bounds = get_bounds(_size,j,_height);
-            int k = get<1>(bounds) - get<0>(bounds);
-            for (int l = 0; l < k; l++) {
-                int recv[_width*2];
-                MPI_Status status;
-                MPI_Recv(&recv,_width*2,MPI_INT,j,0,MPI_COMM_WORLD,&status);
-                Row* r = new Row(_width,recv, 0);
-                cout << display_row(j,row,r->get_nodev()) << endl;
-                row++;
-            }
+        for (int j = 1; j < _size; j++) {
+            MPI_Send(&row,1,MPI_INT,j,0,MPI_COMM_WORLD);
+            MPI_Recv(&row,1,MPI_INT,j,0,MPI_COMM_WORLD,&status);
         }
     }
-
-
-
     /* for visibility */
     timespec t0, t1;
     t0.tv_sec = 0;
