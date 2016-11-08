@@ -218,11 +218,8 @@ void State::apply_simulation() {
  */
 void State::display_config() {
     cout << "\033[2J\033[1;1H"; /* Clears screen */
-    cout << "Generation: " << _current << "\t";
-    cout << "Ignition: " << _ignition << "\t";
-    cout << "Growth: " << _growth << "\t";
-    cout << "Heat Index: " << _burn_osc << "\t";
-    cout << "Soil Quality: " << _grow_osc << endl;
+    cout << "G: " << _current << "\t";
+    Simulator::instance()->display();
 }
 /**
  * Body of simulation screen

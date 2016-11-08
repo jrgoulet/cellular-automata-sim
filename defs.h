@@ -5,11 +5,12 @@
 
 void quit();
 void forest_fire(Node* n);
+void conway(Node* n);
 bool toss(double p);
 int toss(int low, int high);
 int get_density(Node* n);
 
-typedef std::vector<char> langv;
+typedef std::vector<unsigned char> langv;
 typedef std::tuple<double,std::string> var;
 typedef std::vector<var> ctrlv;
 

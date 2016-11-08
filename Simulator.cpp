@@ -11,7 +11,7 @@ mt19937 gen(rd());   /* mersenne twister (RNG) */
 Simulator::Simulator() {
     _mode = 0;
     _ctrlv = new ctrlv();
-    _langv = new vector<char>();
+    _langv = new langv();
 }
 
 void Simulator::init(char** argv) {
@@ -32,9 +32,26 @@ void Simulator::set_default() {
 
     for (char c : {' ','T','X'}) _langv->push_back(c);
 
-    cout << *this << endl;
+}
+
+void Simulator::set_conway() {
+
+    _mode = 2;
+    _name = "Conway's Game of Life";
+
+    var u  (2, "Under-Population");
+    var o  (3, "Over-Population");
+    var g  (3, "Reproduction");
+
+    _ctrlv->push_back(u);
+    _ctrlv->push_back(o);
+    _ctrlv->push_back(g);
+
+    for (unsigned char c : {' ','o'}) _langv->push_back(c);
 
 }
+
+
 
 /**
  * Coin toss using a random-device-seeded mersenne twister over a
@@ -70,7 +87,8 @@ char Simulator::translate(int q) {
 }
 
 void Simulator::run(Node* n) {
-    if (_mode == 1) { forest_fire(n); }
+    if (_mode == 1) forest_fire(n);
+    else if(_mode == 2) conway(n);
 }
 
 vector<tuple<double,string>>* Simulator::get_ctrlv() {
@@ -107,6 +125,31 @@ void forest_fire(Node* n) {
             if (toss(g*(get_density(n)+1))) { n->set(1);}
         }
     }
+}
+
+void conway(Node* n) {
+    Simulator* s = Simulator::instance();
+    double u = get<0>(s->get_ctrlv()->at(0));
+    double o = get<0>(s->get_ctrlv()->at(1));
+    double g = get<0>(s->get_ctrlv()->at(2));
+
+    int pop = 0;
+    for (int x : *n->n()) {if (x == 1) pop++; }
+
+    if (n->status() == 1) {
+        if (pop < u) n->set(0);
+        if (pop > o) n->set(0);
+    } else {
+        if (pop == g) n->set(1);
+    }
+}
+
+void Simulator::display() {
+    cout << _name << " | ";
+    for (var v : *_ctrlv) cout << get<1>(v) << ": " << get<0>(v) << " | ";
+    cout << "States: ";
+    for (int i = 0; i < _langv->size(); i++) cout << "[" << i << "," << _langv->at(i) << "] ";
+    cout << endl;
 }
 
 /**

@@ -32,6 +32,8 @@ public:
     //void set_mode(int mode);
     ctrlv* get_ctrlv();
     char translate(int q);
+    void display();
+    void set_conway();
     friend std::ostream& operator<<(std::ostream&, const Simulator&);
 };
 
