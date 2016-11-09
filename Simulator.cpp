@@ -2,6 +2,7 @@
 #include "Simulator.h"
 #include "defs.h"
 #include <tuple>
+#include <ncurses.h>
 
 using namespace std;
 
@@ -31,6 +32,10 @@ void Simulator::set_default() {
     _ctrlv->push_back(growth);
 
     for (char c : {' ','T','X'}) _langv->push_back(c);
+
+    init_pair(0,COLOR_BLACK,COLOR_BLACK);
+    init_pair(1,COLOR_GREEN,COLOR_BLACK);
+    init_pair(2,COLOR_MAGENTA,COLOR_BLACK);
 
 }
 
@@ -108,18 +113,18 @@ void forest_fire(Node* n) {
     if (n->status() == 1) {
         for (int x : *n->n()) {
             if (x == 2) {
-                n->set(2, 1);
+                n->set(2, 2);
                 ignited = true;
             }
         }
     }
     if (!ignited) {
-        if (n->status() == 2) { n->set(0, 3); }
+        if (n->status() == 2) { n->set(0, 1); }
         else if (n->status() == 1) {
-            if (toss(i)) { n->set(2, 1);}
+            if (toss(i)) { n->set(2, 2);}
         }
         else if (n->status() == 0) {
-            if (toss(g*(get_density(n)+1))) { n->set(1, 2);}
+            if (toss(g*(get_density(n)+1))) { n->set(1, 1);}
         }
     }
 }

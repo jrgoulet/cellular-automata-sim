@@ -46,6 +46,7 @@ public:
     void update_neighbors();
     void apply_simulation();
     void display_map(int delay);
+    void display_exit();
     void fail(std::string e);
     void init_map();
     int get_n();

@@ -3,9 +3,11 @@
 #include <fstream>
 #include <random>
 #include <cstdlib>
+#include <unistd.h>
 #include "State.h"
 #include "Simulator.h"
 #include "defs.h"
+#include <ncurses.h>
 
 
 using namespace std;
@@ -92,6 +94,15 @@ void State::get_map() {
 
     _height = (int) _map->size();
     _width = (int) _map->front().length();
+    if (_rank == 0) {
+        initscr();
+        start_color();
+        resizeterm(_height+2,_width+10);
+        scrollok(stdscr,FALSE);
+        nonl();
+    }
+
+
     set_bounds();
     build_nodes();
 }
@@ -221,14 +232,13 @@ void State::apply_simulation() {
  * @param row overall row number (for display)
  * @param intv pointer to a vector containing node values
  */
-string display_row (int thread, int row, vector<Node*>* nodev) {
-    string r = "";
-    r += ((row > 9) ? to_string(row) : ("0" + to_string(row))) + ": |";
-    r += BG_BLACK;
-    for (Node* n : *nodev) r += *n;
-    r += BG_DEFAULT;
-    r += "| T" + ((thread > 9) ? to_string(thread) : ("0" + to_string(thread)));
-    return r;
+void display_row(int thread, int row, int width, vector<Node*>* nodev) {
+    string prefix = ((row > 9) ? to_string(row) : ("0" + to_string(row))) + "|";
+    int offset = prefix.length();
+    mvaddstr(row,0,prefix.c_str());
+    for (int i = 0; i < nodev->size(); i++) { nodev->at(i)->display(row, i + offset); }
+    string suffix = "|T"+((thread > 9) ? to_string(thread) : ("0" + to_string(thread)));
+    mvaddstr(row,offset+width,(suffix.c_str()));
 }
 
 /**
@@ -238,37 +248,52 @@ string display_row (int thread, int row, vector<Node*>* nodev) {
  * @param delay
  */
 void State::display_map(int delay) {
+    //cbreak();
     MPI_Barrier(MPI_COMM_WORLD);
-    MPI_Status status;
+    string out = "";
     if (_rank != 0) {   /* slave : send map */
-        int row = 1;
-        MPI_Recv(&row,1,MPI_INT,0,0,MPI_COMM_WORLD,&status);
-        for (int j = 0; j < _trees->size(); j++) {
-            cout << display_row(_rank,row, get_row(j)->get_nodev()) << endl;
-            row++;
+        for (int i = 0; i < _trees->size(); i++) {
+            int send[_width*2];
+            for (int j = 0; j < _width; j++) send[j] = status(i, j);
+            for (int j = _width; j < _width*2; j++) send[j] = color(i, j-_width);
+            MPI_Send(&send,_width*2,MPI_INT,0,0,MPI_COMM_WORLD);
         }
-        MPI_Send(&row,1,MPI_INT,0,0,MPI_COMM_WORLD);
     } else {    /* master : receive and display */
         int row = 1;
-        cout << "\x1B[2J\x1B[H";
-        //system("clear");
+        move(0,0);
+        erase();
+        //clear();
         string screen = "";
-        screen += *this;
-        cout << screen << endl;
+        out += *this;
+        mvwaddstr(stdscr,0,0,out.c_str());
         for (int j = 0; j < _trees->size(); j++) {
-            cout << display_row(0,row, get_row(j)->get_nodev()) << endl;
+            display_row(0,row,_width, get_row(j)->get_nodev());
             row++;
         }
-        for (int j = 1; j < _size; j++) {
-            MPI_Send(&row,1,MPI_INT,j,0,MPI_COMM_WORLD);
-            MPI_Recv(&row,1,MPI_INT,j,0,MPI_COMM_WORLD,&status);
+        for (int j = 1; j < _height - _trees->size(); j++) {
+            tuple<int,int> bounds = get_bounds(_size,j,_height);
+            int k = get<1>(bounds) - get<0>(bounds);
+            for (int l = 0; l < k; l++) {
+                int recv[_width*2];
+                MPI_Status status;
+                MPI_Recv(&recv,_width*2,MPI_INT,j,0,MPI_COMM_WORLD,&status);
+                Row* r = new Row(_width,recv, 0);
+                display_row(j,row,_width,r->get_nodev());
+                row++;
+            }
         }
+        curs_set(0);
+        wrefresh(stdscr);
     }
+
+
+
     /* for visibility */
     timespec t0, t1;
     t0.tv_sec = 0;
-    t0.tv_nsec = delay;
+    t0.tv_nsec = 4000000;
     nanosleep(&t0,&t1);
+    //sleep(1);
 }
 /**
  * @return total generations
@@ -319,7 +344,7 @@ ostream& operator << (ostream& o, const State& s) {
 string& operator += (string& s, const State& n) {
     string config = "G: ";
     config += to_string(n._current);
-    config += "\t";
+    config += " ";
     config += *Simulator::instance();
     return s += config;
 }
@@ -356,6 +381,16 @@ void State::check(int argc, char** argv) {
     }
     Simulator::instance()->init(argv);
 }
+
+void State::display_exit() {
+    string msg = "Simulation Complete! Press any key to continue.";
+    int length = (int) msg.length();
+    attron(COLOR_PAIR(1));
+    mvaddstr(_height+1,(_width+10)/2-length/2,msg.c_str());
+    attroff(COLOR_PAIR(1));
+    refresh();
+}
+
 /**
  * Finalize MPI
  */

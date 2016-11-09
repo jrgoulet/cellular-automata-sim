@@ -1,6 +1,8 @@
 #include "Node.h"
 #include "defs.h"
 #include "Simulator.h"
+#include <ncurses.h>
+#include <fstream>
 
 using namespace std;
 
@@ -8,7 +10,7 @@ Node::Node(int status) {
     _n = new array<int,8>;
     _state = status;
     _age = 0;
-    _color = 0;
+    _color = status;
 }
 
 Node::Node(int status, int color, int z) {
@@ -67,13 +69,18 @@ array<int,8>* Node::n() {
     return _n;
 }
 
+void Node::display(int row, int col) {
+    attron(COLOR_PAIR(_color));
+    mvaddch(row,col,Simulator::instance()->translate(_state));
 
+    attroff(COLOR_PAIR(_color));
+}
 
 ostream& operator << (ostream& o, const Node& n) {
-    o << get_color(n._color) << Simulator::instance()->translate(n._state) << FG_DEFAULT;
+    o /*<< get_color(n._color)*/ << Simulator::instance()->translate(n._state) /*<< FG_DEFAULT*/;
     return o;
 }
 
 string& operator += (string& s, const Node& n) {
-    return s += get_color(n._color) + Simulator::instance()->translate(n._state) + FG_DEFAULT;
+    return s += /*get_color(n._color)*/ + Simulator::instance()->translate(n._state) /*+FG_DEFAULT*/;
 }

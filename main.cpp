@@ -1,3 +1,4 @@
+#include <ncurses.h>
 #include "defs.h"
 #include "State.h"
 #include "Simulator.h"
@@ -5,6 +6,7 @@
 using namespace std;
 
 #define SCREEN_DELAY 40000000    /* For smooth viewing of simulation */
+
 
 int main(int argc, char** argv) {
 
@@ -17,6 +19,7 @@ int main(int argc, char** argv) {
     //sim->set_conway();
 
     /* run simulation */ /* State.cpp contains detailed flow */
+
     for (int i = 0; i < s->get_n(); i++) {
         s->transmit_nodes();
         s->update_neighbors();
@@ -24,6 +27,11 @@ int main(int argc, char** argv) {
         s->display_map(SCREEN_DELAY);
         s->inc_n();
     }
+    curs_set(1);
+    s->display_exit();
+    getch();
+    getch();
+    endwin();
     /* exit */
     quit();
 }

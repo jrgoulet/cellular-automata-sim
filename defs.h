@@ -2,6 +2,7 @@
 #define FOREST_DEFS_H
 
 #include "Node.h"
+#include <random>
 
 void quit();
 void forest_fire(Node* n);

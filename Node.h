@@ -25,6 +25,7 @@ public:
     void set(int s, int c);
     void set(int i);
     void setc(int i);
+    void display(int row, int col);
     std::array<int,8>* n();
     int status();
     int color();
