@@ -15,6 +15,9 @@ class State {
     int _width;          /* map width */
     double _density;     /* forest density (map generation) */
 
+    int _win_height;      /* curses window height */
+    int _win_width;
+
     int _generations;    /* number of generations */
     int _current;        /* current generation */
     double _ignition;    /* ignition probability */
@@ -34,23 +37,31 @@ class State {
 
 public:
     State(int argc, char **argv);
-    void check(int argc, char** argv);
-    int status(int row, int n);
-    int color(int r, int n);
-    Row* get_row(int i);
+
+    /* initialization */
     void get_map();
+    void init_window();
+    void adjust_window_width(int w);
     void generate_map();
     void build_nodes();
     void set_bounds();
     void transmit_nodes();
     void update_neighbors();
     void apply_simulation();
-    void display_map(int delay);
-    void display_exit();
+    void check(int argc, char** argv);
     void fail(std::string e);
     void init_map();
-    int get_n();
     void inc_n();
+
+    /* getters */
+    Row* get_row(int i);
+    int get_node_status(int row, int n);
+    int get_node_color(int r, int n);
+    int get_current_generation();
+
+    /* display.cpp */
+    void display_map(int delay);
+    void display_exit();
     friend std::ostream& operator<<(std::ostream&, const State&);
     friend std::string& operator += (std::string&, const State&);
 };

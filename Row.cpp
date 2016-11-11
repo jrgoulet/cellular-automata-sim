@@ -3,10 +3,13 @@
 
 using namespace std;
 
-Node* Row::get_node(int i) {
-    return _nodev->at(i);
-}
 
+/**
+ * Constructor for int vector
+ * @param i int vector
+ * @param size size of vector
+ * @return Row object
+ */
 Row::Row(int* i, int size) {
     _nodev = new vector<Node *>();
     _intv = new vector<int>();
@@ -16,16 +19,13 @@ Row::Row(int* i, int size) {
     }
 }
 
-Row::Row(int size, int* i, int z) {
-    _nodev = new vector<Node *>();
-    _intv = new vector<int>();
-    for (int j = 0; j < size; j++) {
-        //cout << "Node: " << i[j] << i[j+size] << endl;
-        _nodev->push_back(new Node(i[j],i[j+size], 0));
-        _intv->push_back(i[j]);
-    }
-}
 
+/**
+ * Constructor for map vector
+ * @param map map vector
+ * @param r map row
+ * @return Row object
+ */
 Row::Row(vector<string>* map, int r) {
     _nodev = new vector<Node*>();
     _intv = new vector<int>();
@@ -47,23 +47,58 @@ Row::Row(vector<string>* map, int r) {
     }
 }
 
+
+/**
+ * Add node to node vector
+ * @param n node
+ */
 void Row::push(Node* n) {
     _nodev->push_back(n);
 }
 
+
+/**
+ * Get node from node vector
+ * @param i node index
+ * @return Node object
+ */
+Node* Row::get_node(int i) {
+    return _nodev->at(i);
+}
+
+
+/**
+ * Get node status from node vector
+ * @param i node index
+ * @return int node status
+ */
 int Row::get(int i) {
     return _nodev->at(i)->status();
 }
 
+
+/**
+ * Synchronize node vector and int vector
+ */
 void Row::sync() {
     _intv->clear();
     for (Node* n : *_nodev) _intv->push_back(n->status());
 }
 
+
+/**
+ * Get int vector
+ * @return int vector
+ */
 vector<int>* Row::get_intv() {
     return _intv;
 }
 
+
+/**
+ * Get node vector
+ * @return node vector
+ */
 vector<Node*>* Row::get_nodev() {
     return _nodev;
 }

@@ -19,19 +19,17 @@ int main(int argc, char** argv) {
     //sim->set_conway();
 
     /* run simulation */ /* State.cpp contains detailed flow */
-
-    for (int i = 0; i < s->get_n(); i++) {
+    for (int i = 0; i < s->get_current_generation(); i++) {
         s->transmit_nodes();
         s->update_neighbors();
         s->apply_simulation();
         s->display_map(SCREEN_DELAY);
         s->inc_n();
     }
-    curs_set(1);
+
+    /* end simulation */
     s->display_exit();
-    getch();
-    getch();
-    endwin();
+
     /* exit */
     quit();
 }

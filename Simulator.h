@@ -1,6 +1,3 @@
-//
-// Created by Joe Goulet on 11/1/16.
-//
 #include <vector>
 #include "Node.h"
 #include "defs.h"
@@ -10,14 +7,13 @@
 #define FOREST_SIMULATOR_H
 
 
-
 class Simulator {
     int _mode;
     char** _argv;
     ctrlv* _ctrlv;
     langv* _langv;
     std::string _name;
-    //std::vector<std::vector<int>>* _memv;
+    // std::vector<std::vector<int>>* _memv;    // For when I decide to implement memory
     Simulator(Simulator const& copy);            // Not Implemented
     Simulator* operator=(Simulator const* copy);
     Simulator();

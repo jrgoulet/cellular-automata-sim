@@ -24,7 +24,6 @@ public:
     void setn(int i, int s);
     void set(int s, int c);
     void set(int i);
-    void setc(int i);
     void display(int row, int col);
     std::array<int,8>* n();
     int status();

@@ -13,8 +13,6 @@
 using namespace std;
 
 
-
-
 /**
  * Default constructor
  * @param argc argc
@@ -40,6 +38,8 @@ State::State(int argc, char **argv) {
     
     init_map();
 }
+
+
 /**
  * Initializes the simulation's map.
  * Mode 1: Premade map
@@ -56,6 +56,8 @@ void State::init_map() {
     }
     get_map();
 }
+
+
 /**
  * Generates a map from passed arguments
  */
@@ -75,6 +77,8 @@ void State::generate_map() {
     }
     file.close();
 }
+
+
 /**
  * Reads and converts a map from file
  */
@@ -94,18 +98,15 @@ void State::get_map() {
 
     _height = (int) _map->size();
     _width = (int) _map->front().length();
-    if (_rank == 0) {
-        initscr();
-        start_color();
-        resizeterm(_height+2,_width+10);
-        scrollok(stdscr,FALSE);
-        nonl();
-    }
 
-
+    init_window();
     set_bounds();
     build_nodes();
 }
+
+
+
+
 /**
  * Calculate thread boundaries (for any thread)
  * @param size total threads
@@ -136,6 +137,8 @@ tuple<int,int> get_bounds(int size, int rank, int height) {
     }
     return bounds;
 }
+
+
 /**
  * Store calculated thread boundaries.
  */
@@ -147,6 +150,8 @@ void State::set_bounds() {
     _bot = _rank + 1;
     if (_bot == _size || _bot == _height) _bot = -1;
 }
+
+
 /**
  * Builds node structure from map file for data inside boundaries.
  * Sets pointers to the top and bottom rows for transmission.
@@ -157,6 +162,8 @@ void State::build_nodes() {
     _inner_top = _trees->front();
     _inner_bot = _trees->back();
 }
+
+
 /**
  * Send / receive border rows between threads. Blocks on receive, but not on send.
  */
@@ -176,6 +183,8 @@ void State::transmit_nodes() {
     if (_top > -1) _outer_top = new Row(recv_top,_width);
     if (_bot > -1) _outer_bot = new Row(recv_bot,_width);
 }
+
+
 /**
  * Updates the neighbor node array of each node in the thread's node vector.
  * Neighbor nodes are indexed 0-7 from top left to bottom right. If a position
@@ -192,9 +201,9 @@ void State::update_neighbors() {
                 n->setn(1, _outer_top->get(j));
                 n->setn(2, (j == _width - 1) ? 3 : _outer_top->get(j + 1));
             } else {
-                n->setn(0, (j == 0) ? 3 : status(i - 1, j - 1));
-                n->setn(1, status(i - 1, j));
-                n->setn(2, (j == _width - 1) ? 3 : status(i - 1, j + 1));
+                n->setn(0, (j == 0) ? 3 : get_node_status(i - 1, j - 1));
+                n->setn(1, get_node_status(i - 1, j));
+                n->setn(2, (j == _width - 1) ? 3 : get_node_status(i - 1, j + 1));
             }
 
             n->setn(3, (j == 0) ? 3 : r->get(j - 1));
@@ -206,14 +215,15 @@ void State::update_neighbors() {
                 n->setn(6, _outer_bot->get(j));
                 n->setn(7, (j == _width - 1) ? 3 : _outer_bot->get(j + 1));
             } else {
-                n->setn(5, (j == 0) ? 3 : status(i + 1, j - 1));
-                n->setn(6, status(i + 1, j));
-                n->setn(7, (j == _width - 1) ? 3 : status(i + 1, j + 1));
+                n->setn(5, (j == 0) ? 3 : get_node_status(i + 1, j - 1));
+                n->setn(6, get_node_status(i + 1, j));
+                n->setn(7, (j == _width - 1) ? 3 : get_node_status(i + 1, j + 1));
             }
         }
         r->sync();
     }
 }
+
 
 /**
  * Applies the rules of the simulation for each generation on each node. I added a few
@@ -227,80 +237,13 @@ void State::apply_simulation() {
 
 
 /**
- * Body of simulation screen
- * @param thread origin rank of thread containing nodes to be printed (for display)
- * @param row overall row number (for display)
- * @param intv pointer to a vector containing node values
- */
-void display_row(int thread, int row, int width, vector<Node*>* nodev) {
-    string prefix = ((row > 9) ? to_string(row) : ("0" + to_string(row))) + "|";
-    int offset = prefix.length();
-    mvaddstr(row,0,prefix.c_str());
-    for (int i = 0; i < nodev->size(); i++) { nodev->at(i)->display(row, i + offset); }
-    string suffix = "|T"+((thread > 9) ? to_string(thread) : ("0" + to_string(thread)));
-    mvaddstr(row,offset+width,(suffix.c_str()));
-}
-
-/**
- * Displays a live view or snapshot of the current generation. Using MPI_Barrier to
- * ensure that no threads are expecting stray messages. All threads send to master,
- * where the data is displayed.
- * @param delay
- */
-void State::display_map(int delay) {
-    //cbreak();
-    MPI_Barrier(MPI_COMM_WORLD);
-    string out = "";
-    if (_rank != 0) {   /* slave : send map */
-        for (int i = 0; i < _trees->size(); i++) {
-            int send[_width*2];
-            for (int j = 0; j < _width; j++) send[j] = status(i, j);
-            for (int j = _width; j < _width*2; j++) send[j] = color(i, j-_width);
-            MPI_Send(&send,_width*2,MPI_INT,0,0,MPI_COMM_WORLD);
-        }
-    } else {    /* master : receive and display */
-        int row = 1;
-        move(0,0);
-        erase();
-        //clear();
-        string screen = "";
-        out += *this;
-        mvwaddstr(stdscr,0,0,out.c_str());
-        for (int j = 0; j < _trees->size(); j++) {
-            display_row(0,row,_width, get_row(j)->get_nodev());
-            row++;
-        }
-        for (int j = 1; j < _height - _trees->size(); j++) {
-            tuple<int,int> bounds = get_bounds(_size,j,_height);
-            int k = get<1>(bounds) - get<0>(bounds);
-            for (int l = 0; l < k; l++) {
-                int recv[_width*2];
-                MPI_Status status;
-                MPI_Recv(&recv,_width*2,MPI_INT,j,0,MPI_COMM_WORLD,&status);
-                Row* r = new Row(_width,recv, 0);
-                display_row(j,row,_width,r->get_nodev());
-                row++;
-            }
-        }
-        curs_set(0);
-        wrefresh(stdscr);
-    }
-
-
-
-    /* for visibility */
-    timespec t0, t1;
-    t0.tv_sec = 0;
-    t0.tv_nsec = 4000000;
-    nanosleep(&t0,&t1);
-    //sleep(1);
-}
-/**
  * @return total generations
  */
-int State::get_n() {
+int State::get_current_generation() {
     return _generations;
 }
+
+
 /**
  * @param i row number
  * @return Row* object
@@ -308,46 +251,30 @@ int State::get_n() {
 Row* State::get_row(int i) {
     return _trees->at(i);
 }
+
+
 /**
  * Status of a node in row r at index n
  * @param row row
  * @param n node index
  * @return int node status
  */
-int State::status(int r, int n) {
+int State::get_node_status(int r, int n) {
     return _trees->at(r)->get(n);
 }
 
-int State::color(int r, int n) {
+int State::get_node_color(int r, int n) {
     return _trees->at(r)->get_node(n)->color();
 }
+
+
 /**
  * Increments the current generation (used in main)
  */
 void State::inc_n() {
     _current++;
 }
-/**
- * Output for debugging purposes
- */
-ostream& operator << (ostream& o, const State& s) {
-    o << s._rank << "| "<< "Mode:   " << s._mode    << "\t\t(" << s._height << "," << s._width << ")" << endl;
-    o << s._rank << "| "<< "N:      " << s._current << " / "        << s._generations << endl;
-    o << s._rank << "| "<< "Start:  " << s._start   << "\tTop:    " << s._top << "\tIgnition:  " << s._ignition << endl;
-    o << s._rank << "| "<< "End:    " << s._end     << "\tBot:    " << s._bot << "\tGrowth:    " << s._growth << endl;
-    for (int i = 0; i < s._trees->size(); i++) {
-        o << s._rank << "|  Trees:    \t[ "; for (int j : *s._trees->at(i)->get_intv()) o << Simulator::instance()->translate(j); o << "]" << endl;
-    }
-    return o;
-}
 
-string& operator += (string& s, const State& n) {
-    string config = "G: ";
-    config += to_string(n._current);
-    config += " ";
-    config += *Simulator::instance();
-    return s += config;
-}
 
 /**
  * Exit with error message
@@ -362,6 +289,8 @@ void State::fail(string e) {
     }
     quit();
 }
+
+
 /**
  * Checks arguments
  */
@@ -382,14 +311,6 @@ void State::check(int argc, char** argv) {
     Simulator::instance()->init(argv);
 }
 
-void State::display_exit() {
-    string msg = "Simulation Complete! Press any key to continue.";
-    int length = (int) msg.length();
-    attron(COLOR_PAIR(1));
-    mvaddstr(_height+1,(_width+10)/2-length/2,msg.c_str());
-    attroff(COLOR_PAIR(1));
-    refresh();
-}
 
 /**
  * Finalize MPI
