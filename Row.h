@@ -12,7 +12,6 @@ class Row {
 
 public:
     Row(int* i, int size);
-    Row(int size, int* i, int z);
     Row(std::vector<std::string>* map, int r);
     std::vector<int>* get_intv();
     std::vector<Node*>* get_nodev();

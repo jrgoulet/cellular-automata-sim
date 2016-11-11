@@ -1,5 +1,4 @@
 #include "Node.h"
-#include "defs.h"
 #include "Simulator.h"
 
 using namespace std;
@@ -37,7 +36,7 @@ void Node::set(int s, int c) {
 }
 
 void Node::setn(int i, int s) {
-    _n->at(i) = s;
+    _n->at((unsigned long) i) = s;
 }
 
 array<int,8>* Node::n() {

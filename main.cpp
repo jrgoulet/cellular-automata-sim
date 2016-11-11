@@ -1,4 +1,4 @@
-#include <ncurses.h>
+
 #include "defs.h"
 #include "State.h"
 #include "Simulator.h"

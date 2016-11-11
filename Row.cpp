@@ -29,7 +29,7 @@ Row::Row(int* i, int size) {
 Row::Row(vector<string>* map, int r) {
     _nodev = new vector<Node*>();
     _intv = new vector<int>();
-    for (char c : map->at(r)) {
+    for (char c : map->at((unsigned long) r)) {
         int i;
         switch (c) {
             case 'T':
@@ -63,7 +63,7 @@ void Row::push(Node* n) {
  * @return Node object
  */
 Node* Row::get_node(int i) {
-    return _nodev->at(i);
+    return _nodev->at((unsigned long) i);
 }
 
 
@@ -73,7 +73,7 @@ Node* Row::get_node(int i) {
  * @return int node status
  */
 int Row::get(int i) {
-    return _nodev->at(i)->status();
+    return _nodev->at((unsigned long) i)->status();
 }
 
 

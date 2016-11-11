@@ -19,7 +19,6 @@ class Node {
 
 public:
     Node(int status);
-    Node(int status, int color, int z);
     Node(int status, Row* r);
     void setn(int i, int s);
     void set(int s, int c);

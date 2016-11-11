@@ -6,9 +6,6 @@
 #include "State.h"
 #include "Simulator.h"
 #include <mpi.h>
-#include "Node.h"
-#include <iostream>
-#include <fstream>
 #include <ncurses.h>
 
 using namespace std;
@@ -121,7 +118,7 @@ void Simulator::display() {
     cout << _name << " | ";
     for (var v : *_ctrlv) cout << get<1>(v) << ": " << get<0>(v) << " | ";
     cout << "States: ";
-    for (int i = 0; i < _langv->size(); i++) cout << "[" << i << "," << _langv->at(i) << "] ";
+    for (int i = 0; i < _langv->size(); i++) cout << "[" << i << "," << _langv->at((unsigned long) i) << "] ";
     cout << endl;
 }
 
@@ -135,7 +132,7 @@ void display_row(int thread, int row, int width, vector<Node*>* nodev) {
     string prefix = ((row > 9) ? to_string(row) : ("0" + to_string(row))) + "|";
     int offset = (int) prefix.length();
     mvaddstr(row,0,prefix.c_str());
-    for (int i = 0; i < nodev->size(); i++) { nodev->at(i)->display(row, i + offset); }
+    for (int i = 0; i < nodev->size(); i++) { nodev->at((unsigned long) i)->display(row, i + offset); }
     string suffix = "|T"+((thread > 9) ? to_string(thread) : ("0" + to_string(thread)));
     mvaddstr(row,offset+width,(suffix.c_str()));
 }
@@ -216,7 +213,7 @@ string& operator += (string& s, const Simulator& n) {
     for (int i = 0; i < n._langv->size(); i++) {
         config += to_string(i);
         config += ":[";
-        config += n._langv->at(i);
+        config += n._langv->at((unsigned long) i);
         config += "] ";
     }
     return s += config;
@@ -234,7 +231,7 @@ ostream& operator << (ostream& o, const State& s) {
     o << s._rank << "| "<< "Start:  " << s._start   << "\tTop:    " << s._top << "\tIgnition:  " << s._ignition << endl;
     o << s._rank << "| "<< "End:    " << s._end     << "\tBot:    " << s._bot << "\tGrowth:    " << s._growth << endl;
     for (int i = 0; i < s._trees->size(); i++) {
-        o << s._rank << "|  Trees:    \t[ "; for (int j : *s._trees->at(i)->get_intv()) o << Simulator::instance()->translate(j); o << "]" << endl;
+        o << s._rank << "|  Trees:    \t[ "; for (int j : *s._trees->at((unsigned long) i)->get_intv()) o << Simulator::instance()->translate(j); o << "]" << endl;
     }
     return o;
 }
