@@ -9,6 +9,6 @@ generations:
 ignition:
 0.001
 growth:
-0.001
+0.01
 init density:
 0.05

@@ -9,16 +9,9 @@
 #include "defs.h"
 #include <ncurses.h>
 
-
 using namespace std;
 extern string print_row(int thread, int row, int width, vector<Node*>* nodev);
 
-void debug(string s) {
-    fstream file;
-    file.open ("debug.log", fstream::out | fstream::app);
-    file << s << endl;
-    file.close();
-}
 /**
  * Default constructor
  * @param argc argc
@@ -26,10 +19,7 @@ void debug(string s) {
  * @return State object
  */
 State::State(int argc, char **argv) {
-    debug("Initializing thread state");
     //check(argc, argv);
-
-    debug("\tMPI");
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &_size);
@@ -37,12 +27,10 @@ State::State(int argc, char **argv) {
     _filename = argv[1];
     _mode = (argc == 5) ? 1 : 2;
     if (_mode == 2) {
-        debug("\tArgument Mode 2");
         _current = 1;
         init_sim(_filename);
     }
     else {
-        debug("\tArgument Mode 1");
         _generations = stoi(argv[2]);
         _current = 1;
         _ignition = stod(argv[3]);
@@ -56,7 +44,6 @@ State::State(int argc, char **argv) {
  * Initialize simulator from file
  */
 void State::init_sim(string filename) {
-    cout << "Initializing simulator" << endl;
     int mode;
     fstream file;
     file.open (filename, fstream::in);
@@ -146,7 +133,6 @@ void State::init_sim(string filename) {
  * Generates a node state map from passed arguments
  */
 void State::generate_nodes(int min, int max, double density) {
-    cout << "Generating nodes" << endl;
     _node_map = new vector<Row*>();
     if (_rank == 0) {
         int send[_height][_width];
@@ -257,18 +243,14 @@ void State::set_bounds() {
  */
 void State::build_nodes() {
     _nodes = new vector<Row *>();
-    string s = "Thread " + to_string(_rank) + ":\n";
     if (_mode == 1) {
         for (int i = _start; i < _end; i++) _nodes->push_back(new Row(_map, i));
     }
     else {
         for (int i = _start; i < _end; i++) {
-            s += print_row(_rank,i,_width,_node_map->at(i)->get_nodev()) + "\n";
             _nodes->push_back(_node_map->at(i));
         }
     }
-
-    debug(s);
 
     _inner_top = _nodes->front();
     _inner_bot = _nodes->back();
@@ -395,8 +377,7 @@ void State::fail(string e) {
     if (_rank == 0) {
         cout << e << endl << "Usage:" << endl;
         cout << "Mode 1: ./forest [filename] [# generations] [ignition probability] [growth probability]" << endl;
-        cout << "Mode 2: ./forest [filename] [# generations] [ignition probability] [growth probability] ";
-        cout << "[width] [height] [density]" << endl;
+        cout << "Mode 2: ./forest [.sim filename]" << endl;
     }
     quit();
 }

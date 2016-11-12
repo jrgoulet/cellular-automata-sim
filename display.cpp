@@ -12,6 +12,8 @@ using namespace std;
 
 /* Method declarations */
 void display_row(int thread, int row, int width, vector<Node*>* nodev);
+string print_row(int thread, int row, int width, vector<Node*>* nodev);
+
 ostream& operator << (ostream& o, const Simulator& s);
 string& operator += (string& s, const Simulator& n);
 ostream& operator << (ostream& o, const State& s);
@@ -58,7 +60,7 @@ void State::adjust_window_width(int w) {
  * where the data is displayed.
  * @param delay
  */
-void State::display_map(int delay) {
+string State::display_map(int delay) {
     MPI_Barrier(MPI_COMM_WORLD);
     string out = "";
     if (_rank != 0) {   /* slave : send map */
@@ -78,10 +80,12 @@ void State::display_map(int delay) {
         out += *this;
         adjust_window_width((int) out.length());
         mvwaddstr(stdscr,0,0,out.c_str());
+        out += "\n";
 
         /* Master thread row display */
         for (int j = 0; j < _nodes->size(); j++) {
             display_row(0,row,_width, get_row(j)->get_nodev());
+            out += print_row(0,row,_width,get_row(j)->get_nodev()) + "\n";
             row++;
         }
 
@@ -95,12 +99,14 @@ void State::display_map(int delay) {
                 MPI_Recv(&recv,_width*2,MPI_INT,j,0,MPI_COMM_WORLD,&status);
                 Row* r = new Row(recv,_width);
                 display_row(j,row,_width,r->get_nodev());
+                out += print_row(j,row,_width,r->get_nodev()) + "\n";
                 row++;
             }
         }
 
         /* Update tiles */
         refresh();
+
     }
 
     /* delay for visibility, 4000000 ns = 25 FPS max */
@@ -108,6 +114,8 @@ void State::display_map(int delay) {
     t0.tv_sec = 0;
     t0.tv_nsec = delay;
     nanosleep(&t0,&t1);
+
+    return out;
 }
 
 
@@ -150,17 +158,22 @@ string print_row(int thread, int row, int width, vector<Node*>* nodev) {
 /**
  * Display exit message
  */
-void State::display_exit() {
-    curs_set(1);
-    string msg = "Simulation Complete! Press [Enter] to continue.";
-    int length = (int) msg.length();
-    attron(COLOR_PAIR(1));
-    mvaddstr(_height+1,(_width+10)/2-length/2,msg.c_str());
-    attroff(COLOR_PAIR(1));
-    refresh();
-    getch();
-    getch();
-    endwin();
+void State::display_exit(string out) {
+    if (_rank == 0) {
+        curs_set(1);
+        string msg = "Simulation Complete! Press [Enter] to continue.";
+        int length = (int) msg.length();
+        attron(COLOR_PAIR(1));
+        mvaddstr(_height + 1, (_width + 10) / 2 - length / 2, msg.c_str());
+        attroff(COLOR_PAIR(1));
+        refresh();
+        getch();
+        getch();
+        endwin();
+        cout << "\033[H\033[J";
+        cout << out << endl;
+    }
+
 }
 
 /**

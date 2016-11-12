@@ -60,8 +60,8 @@ public:
     int get_current_generation();
 
     /* display.cpp */
-    void display_map(int delay);
-    void display_exit();
+    std::string display_map(int delay);
+    void display_exit(std::string out);
     friend std::ostream& operator<<(std::ostream&, const State&);
     friend std::string& operator += (std::string&, const State&);
 };
