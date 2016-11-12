@@ -25,19 +25,14 @@ Simulator::Simulator() {
 }
 
 
-void Simulator::init(char** argv) {
-    _argv = argv;
-}
-
-
-void Simulator::set_default() {
+void Simulator::set_forest(double i, double g) {
 
     _name = "Forest Fire";
     _mode = 1;
 
     /* Simulation vars */
-    var ignition    (stod(_argv[3]), "Ignition");
-    var growth      (stod(_argv[4]), "Growth");
+    var ignition    (i, "Ignition");
+    var growth      (g, "Growth");
     _ctrlv->push_back(ignition);
     _ctrlv->push_back(growth);
 
@@ -47,18 +42,18 @@ void Simulator::set_default() {
     /* Colors */
     init_pair(0,COLOR_BLACK,COLOR_BLACK);
     init_pair(1,COLOR_GREEN,COLOR_BLACK);
-    init_pair(2,COLOR_MAGENTA,COLOR_BLACK);
+    init_pair(2,COLOR_RED,COLOR_BLACK);
 }
 
-void Simulator::set_conway() {
+void Simulator::set_conway(int a, int b, int c) {
 
     _name = "Conway's Game of Life";
     _mode = 2;
 
     /* Simulation vars */
-    var u  (2, "Under-Population");
-    var o  (3, "Over-Population");
-    var g  (3, "Reproduction");
+    var u  (a, "Under-Population");
+    var o  (b, "Over-Population");
+    var g  (c, "Reproduction");
     _ctrlv->push_back(u);
     _ctrlv->push_back(o);
     _ctrlv->push_back(g);

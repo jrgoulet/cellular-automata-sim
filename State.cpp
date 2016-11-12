@@ -11,8 +11,14 @@
 
 
 using namespace std;
+extern string print_row(int thread, int row, int width, vector<Node*>* nodev);
 
-
+void debug(string s) {
+    fstream file;
+    file.open ("debug.log", fstream::out | fstream::app);
+    file << s << endl;
+    file.close();
+}
 /**
  * Default constructor
  * @param argc argc
@@ -20,62 +26,155 @@ using namespace std;
  * @return State object
  */
 State::State(int argc, char **argv) {
-    check(argc, argv);
+    debug("Initializing thread state");
+    //check(argc, argv);
 
+    debug("\tMPI");
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &_size);
 
     _filename = argv[1];
     _mode = (argc == 5) ? 1 : 2;
-    _generations = stoi(argv[2]);
-    _current = 1;
-    _ignition = stod(argv[3]);
-    _growth = stod(argv[4]);
-    _width = (_mode == 2) ? stoi(argv[5]) : 0;
-    _height = (_mode == 2) ? stoi(argv[6]): 0;
-    _density = (_mode == 2) ? stod(argv[7]) : 0;
-    
-    init_map();
-}
-
-
-/**
- * Initializes the simulation's map.
- * Mode 1: Premade map
- * Mode 2: Generated map
- */
-void State::init_map() {
-    MPI_Status status;
-    int buffer;
     if (_mode == 2) {
-        if (_rank == 0) {
-            generate_map();
-            for (int i = 1; i < _size; i++) MPI_Send(&buffer, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
-        } else MPI_Recv(&buffer, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
+        debug("\tArgument Mode 2");
+        _current = 1;
+        init_sim(_filename);
     }
-    get_map();
+    else {
+        debug("\tArgument Mode 1");
+        _generations = stoi(argv[2]);
+        _current = 1;
+        _ignition = stod(argv[3]);
+        _growth = stod(argv[4]);
+        get_map();
+    }
 }
 
 
 /**
- * Generates a map from passed arguments
+ * Initialize simulator from file
  */
-void State::generate_map() {
+void State::init_sim(string filename) {
+    cout << "Initializing simulator" << endl;
+    int mode;
     fstream file;
-    string row;
+    file.open (filename, fstream::in);
+    string line;
 
-    file.open (_filename, fstream::out);
-    if (!file) fail(ERROR_FILE);
-    for (int i = 0; i < _height; i++) {
-        row = "";
-        for(int j = 0; j < _width; j++) {
-            if (toss(_density)) row += "T";
-            else row += " ";
-        }
-        file << row << endl;
+    /* Mode */
+    getline(file, line);
+    getline(file, line);
+    mode = stoi(line);
+
+    /* Height */
+    getline(file, line);
+    getline(file, line);
+    _height = stoi(line);
+
+    /* Width */
+    getline(file, line);
+    getline(file, line);
+    _width = stoi(line);
+
+    /* Generations */
+    getline(file, line);
+    getline(file, line);
+    _generations = stoi(line);
+
+    /* Forest Fire Simulation (Mode 1) */
+    if (mode == 1) {
+        double i, g, density;
+
+        /* Ignition */
+        getline(file, line);
+        getline(file, line);
+        i = stod(line);
+
+        /* Growth */
+        getline(file, line);
+        getline(file, line);
+        g = stod(line);
+
+        /* Initial Density */
+        getline(file, line);
+        getline(file, line);
+        density = stod(line);
+
+        init_window();
+        Simulator::instance()->set_forest(i,g);
+        generate_nodes(0,1,density);
     }
-    file.close();
+
+    /* Conway Simulation (Mode 2) */
+    if (mode == 2) {
+        int u, o, g;
+        double density;
+
+        /* Underpopulation */
+        getline(file, line);
+        getline(file, line);
+        u = stoi(line);
+
+        /* Overpopulation */
+        getline(file, line);
+        getline(file, line);
+        o = stoi(line);
+
+        /* Growth */
+        getline(file, line);
+        getline(file, line);
+        g = stoi(line);
+
+        /* Initial Density */
+        getline(file, line);
+        getline(file, line);
+        density = stod(line);
+
+        init_window();
+        Simulator::instance()->set_conway(u,o,g);
+        generate_nodes(0,1,density);
+    }
+
+    set_bounds();
+    build_nodes();
+
+}
+
+
+/**
+ * Generates a node state map from passed arguments
+ */
+void State::generate_nodes(int min, int max, double density) {
+    cout << "Generating nodes" << endl;
+    _node_map = new vector<Row*>();
+    if (_rank == 0) {
+        int send[_height][_width];
+        for (int i = 0; i < _height; i++) {
+            int nodes[_width];
+            for (int j = 0; j < _width; j++) {
+                int status = toss(density);
+                nodes[j] = status;
+                send[i][j] = status;
+            }
+            _node_map->push_back(new Row(nodes,_width));
+        }
+        for (int i = 1; i < _size; i++) {
+            MPI_Send(&send,_width*_height,MPI_INT,i,0,MPI_COMM_WORLD);
+        }
+    }
+    else {
+        MPI_Status status;
+        int recv[_height][_width];
+        MPI_Recv(&recv,_width*_height,MPI_INT,0,0,MPI_COMM_WORLD,&status);
+        for (int i = 0; i < _height; i++) {
+            int nodes[_width];
+            for (int j = 0; j < _width; j++) {
+                nodes[j] = recv[i][j];
+            }
+            _node_map->push_back(new Row(nodes,_width));
+        }
+    }
 }
 
 
@@ -99,12 +198,12 @@ void State::get_map() {
     _height = (int) _map->size();
     _width = (int) _map->front().length();
 
-    init_window();
     set_bounds();
     build_nodes();
+    init_window();
+    Simulator::instance()->set_forest(_ignition,_growth);
+
 }
-
-
 
 
 /**
@@ -157,10 +256,22 @@ void State::set_bounds() {
  * Sets pointers to the top and bottom rows for transmission.
  */
 void State::build_nodes() {
-    _trees = new vector<Row *>();
-    for (int i = _start; i < _end; i++) _trees->push_back(new Row(_map,i));
-    _inner_top = _trees->front();
-    _inner_bot = _trees->back();
+    _nodes = new vector<Row *>();
+    string s = "Thread " + to_string(_rank) + ":\n";
+    if (_mode == 1) {
+        for (int i = _start; i < _end; i++) _nodes->push_back(new Row(_map, i));
+    }
+    else {
+        for (int i = _start; i < _end; i++) {
+            s += print_row(_rank,i,_width,_node_map->at(i)->get_nodev()) + "\n";
+            _nodes->push_back(_node_map->at(i));
+        }
+    }
+
+    debug(s);
+
+    _inner_top = _nodes->front();
+    _inner_bot = _nodes->back();
 }
 
 
@@ -191,8 +302,8 @@ void State::transmit_nodes() {
  * is out of bounds, it is marked with a 3.
  */
 void State::update_neighbors() {
-    for (int i = 0; i < _trees->size(); i++) {
-        Row* r = _trees->at(i);
+    for (int i = 0; i < _nodes->size(); i++) {
+        Row* r = _nodes->at(i);
         for (int j = 0; j < _width; j++) {
             Node* n = r->get_node(j);
             if (_top == -1 && i == 0) { for (int x : {0,1,2}) n->setn(x, 3); }
@@ -209,8 +320,8 @@ void State::update_neighbors() {
             n->setn(3, (j == 0) ? 3 : r->get(j - 1));
             n->setn(4, (j == _width - 1) ? 3 : r->get(j + 1));
             
-            if (_bot == -1 && i ==_trees->size()-1) { for (int x : {5,6,7}) n->setn(x, 3); }
-            else if (i ==_trees->size()-1) {
+            if (_bot == -1 && i ==_nodes->size()-1) { for (int x : {5,6,7}) n->setn(x, 3); }
+            else if (i ==_nodes->size()-1) {
                 n->setn(5, (j == 0) ? 3 : _outer_bot->get(j - 1));
                 n->setn(6, _outer_bot->get(j));
                 n->setn(7, (j == _width - 1) ? 3 : _outer_bot->get(j + 1));
@@ -232,7 +343,7 @@ void State::update_neighbors() {
  * @param grow A constant that allows an empty cell to produce a tree
  */
 void State::apply_simulation() {
-    for (Row* r : *_trees) { for (int j = 0; j < _width; j++) { Simulator::instance()->run(r->get_node(j)); }}
+    for (Row* r : *_nodes) { for (int j = 0; j < _width; j++) { Simulator::instance()->run(r->get_node(j)); }}
 }
 
 
@@ -249,7 +360,7 @@ int State::get_current_generation() {
  * @return Row* object
  */
 Row* State::get_row(int i) {
-    return _trees->at(i);
+    return _nodes->at(i);
 }
 
 
@@ -260,11 +371,11 @@ Row* State::get_row(int i) {
  * @return int node status
  */
 int State::get_node_status(int r, int n) {
-    return _trees->at(r)->get(n);
+    return _nodes->at(r)->get(n);
 }
 
 int State::get_node_color(int r, int n) {
-    return _trees->at(r)->get_node(n)->color();
+    return _nodes->at(r)->get_node(n)->color();
 }
 
 
@@ -295,20 +406,14 @@ void State::fail(string e) {
  * Checks arguments
  */
 void State::check(int argc, char** argv) {
-    if (argc != 5 && argc != 8) fail(ERROR_ARGV_C);
+    if (argc != 5 && argc != 2) fail(ERROR_ARGV_C);
     try {
         if (stoi(argv[2]) < 1) fail(ERROR_ARGV_2);
         if (stod(argv[3]) < 0 || stoi(argv[3]) > 1) fail(ERROR_ARGV_3);
         if (stod(argv[4]) < 0 || stoi(argv[4]) > 1) fail(ERROR_ARGV_4);
-        if (_mode == 2) {
-            if (stoi(argv[5]) < 5) fail(ERROR_ARGV_5);
-            if (stoi(argv[6]) < 5) fail(ERROR_ARGV_6);
-            if (stod(argv[7]) < 0 || stod(argv[7]) > 1) fail(ERROR_ARGV_7);
-        }
     } catch (int e) {
         fail(ERROR_ARGV_T);
     }
-    Simulator::instance()->init(argv);
 }
 
 

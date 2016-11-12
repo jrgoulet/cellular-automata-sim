@@ -24,12 +24,12 @@ public:
     }
     void run(Node* node);
     void init(char** argv);
-    void set_default();
+    void set_forest(double i, double g);
     //void set_mode(int mode);
     ctrlv* get_ctrlv();
     void display();
     char translate(int i);
-    void set_conway();
+    void set_conway(int a, int b, int c);
     friend std::ostream& operator<<(std::ostream&, const Simulator&);
     friend std::string& operator += (std::string&, const Simulator&);
 };

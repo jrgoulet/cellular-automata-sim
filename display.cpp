@@ -62,7 +62,7 @@ void State::display_map(int delay) {
     MPI_Barrier(MPI_COMM_WORLD);
     string out = "";
     if (_rank != 0) {   /* slave : send map */
-        for (int i = 0; i < _trees->size(); i++) {
+        for (int i = 0; i < _nodes->size(); i++) {
             int send[_width*2];
             for (int j = 0; j < _width; j++) send[j] = get_node_status(i, j);
             for (int j = _width; j < _width*2; j++) send[j] = get_node_color(i, j - _width);
@@ -80,13 +80,13 @@ void State::display_map(int delay) {
         mvwaddstr(stdscr,0,0,out.c_str());
 
         /* Master thread row display */
-        for (int j = 0; j < _trees->size(); j++) {
+        for (int j = 0; j < _nodes->size(); j++) {
             display_row(0,row,_width, get_row(j)->get_nodev());
             row++;
         }
 
         /* Slave thread row display */
-        for (int j = 1; j < _height - _trees->size(); j++) {
+        for (int j = 1; j < _height - _nodes->size(); j++) {
             tuple<int,int> bounds = get_bounds(_size,j,_height);
             int k = get<1>(bounds) - get<0>(bounds);
             for (int l = 0; l < k; l++) {
@@ -135,6 +135,16 @@ void display_row(int thread, int row, int width, vector<Node*>* nodev) {
     for (int i = 0; i < nodev->size(); i++) { nodev->at((unsigned long) i)->display(row, i + offset); }
     string suffix = "|T"+((thread > 9) ? to_string(thread) : ("0" + to_string(thread)));
     mvaddstr(row,offset+width,(suffix.c_str()));
+}
+
+string print_row(int thread, int row, int width, vector<Node*>* nodev) {
+    string out = "";
+    out+= ((row > 9) ? to_string(row) : ("0" + to_string(row))) + "|";
+    for (int i = 0; i < nodev->size(); i++) {
+        out += Simulator::instance()->translate(nodev->at((unsigned long) i)->status());
+    }
+    out += "|T"+((thread > 9) ? to_string(thread) : ("0" + to_string(thread)));
+    return out;
 }
 
 /**
@@ -230,8 +240,8 @@ ostream& operator << (ostream& o, const State& s) {
     o << s._rank << "| "<< "N:      " << s._current << " / "        << s._generations << endl;
     o << s._rank << "| "<< "Start:  " << s._start   << "\tTop:    " << s._top << "\tIgnition:  " << s._ignition << endl;
     o << s._rank << "| "<< "End:    " << s._end     << "\tBot:    " << s._bot << "\tGrowth:    " << s._growth << endl;
-    for (int i = 0; i < s._trees->size(); i++) {
-        o << s._rank << "|  Trees:    \t[ "; for (int j : *s._trees->at((unsigned long) i)->get_intv()) o << Simulator::instance()->translate(j); o << "]" << endl;
+    for (int i = 0; i < s._nodes->size(); i++) {
+        o << s._rank << "|  Trees:    \t[ "; for (int j : *s._nodes->at((unsigned long) i)->get_intv()) o << Simulator::instance()->translate(j); o << "]" << endl;
     }
     return o;
 }

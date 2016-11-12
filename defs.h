@@ -15,9 +15,11 @@ void quit();
 
 /* Simulations */
 bool toss(double p); /* For generate_map() */
+int toss(int low, int high); /* For generate_nodes() */
 
 /* Display methods */
 std::tuple<int,int> get_bounds(int size, int rank, int height);
+
 
 /* Messages */
 #define ERROR_ARGV_C "Improper argument count"

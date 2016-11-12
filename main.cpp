@@ -2,6 +2,7 @@
 #include "defs.h"
 #include "State.h"
 #include "Simulator.h"
+#include <fstream>
 
 using namespace std;
 
@@ -12,11 +13,6 @@ int main(int argc, char** argv) {
 
     /* thread state */
     State* s = new State(argc, argv);
-
-    /* mode */
-    Simulator* sim =Simulator::instance();
-    sim->set_default();
-    //sim->set_conway();
 
     /* run simulation */ /* State.cpp contains detailed flow */
     for (int i = 0; i < s->get_current_generation(); i++) {

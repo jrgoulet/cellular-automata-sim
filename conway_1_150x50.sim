@@ -1,0 +1,16 @@
+mode:
+2
+height:
+50
+width:
+150
+generations:
+100
+underpopulation:
+2
+overpopulation:
+3
+growth:
+3
+init density:
+0.05

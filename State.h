@@ -13,7 +13,6 @@ class State {
     std::string _filename; /* map filename */
     int _height;         /* map height */
     int _width;          /* map width */
-    double _density;     /* forest density (map generation) */
 
     int _win_height;      /* curses window height */
     int _win_width;
@@ -32,7 +31,8 @@ class State {
     Row* _outer_top;     /* top row (remote) */
     Row* _outer_bot;     /* bottom row (remote) */
 
-    std::vector<Row*>* _trees; /* all local trees (nodes) */
+    std::vector<Row*>* _nodes; /* all local nodes */
+    std::vector<Row*>* _node_map; /* generated map nodes */
     std::vector<std::string>* _map; /* initial map from file */
 
 public:
@@ -42,7 +42,8 @@ public:
     void get_map();
     void init_window();
     void adjust_window_width(int w);
-    void generate_map();
+    void init_sim(std::string filename);
+    void generate_nodes(int min, int max, double density);
     void build_nodes();
     void set_bounds();
     void transmit_nodes();
@@ -50,7 +51,6 @@ public:
     void apply_simulation();
     void check(int argc, char** argv);
     void fail(std::string e);
-    void init_map();
     void inc_n();
 
     /* getters */
